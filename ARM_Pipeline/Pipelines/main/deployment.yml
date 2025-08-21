@@ -1,0 +1,51 @@
+parameters:
+  azureServiceConnection: ''
+  location: ''
+  resourceGroupName: ''
+
+jobs:
+  - deployment: DeployResources
+    displayName: "Deploy ARM Templates"
+    environment: 'dev'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+            - download: current
+              artifact: 'arm-templates'
+
+            - task: AzureCLI@2
+              displayName: "Azure Login & Create RG"
+              inputs:
+                azureSubscription: ${{ parameters.azureServiceConnection }}
+                scriptType: 'pscore'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  az group create --name ${{ parameters.resourceGroupName }} --location ${{ parameters.location }}
+
+            - task: AzureCLI@2
+              displayName: "Deploy Key Vault"
+              inputs:
+                azureSubscription: ${{ parameters.azureServiceConnection }}
+                scriptType: 'pscore'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  az deployment group create --resource-group ${{ parameters.resourceGroupName }} --template-file "$(Pipeline.Workspace)/arm-templates/keyvault/template.json" --parameters "$(Pipeline.Workspace)/arm-templates/keyvault/parameters.json"
+
+            - task: AzureCLI@2
+              displayName: "Deploy SQL Server & DB"
+              inputs:
+                azureSubscription: ${{ parameters.azureServiceConnection }}
+                scriptType: 'pscore'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  az deployment group create --resource-group ${{ parameters.resourceGroupName }} --template-file "$(Pipeline.Workspace)/arm-templates/sqlserverdb/template.json" --parameters "$(Pipeline.Workspace)/arm-templates/sqlserverdb/parameters.json"
+
+            - task: AzureCLI@2
+              displayName: "Deploy Web App"
+              inputs:
+                azureSubscription: ${{ parameters.azureServiceConnection }}
+                scriptType: 'pscore'
+                scriptLocation: 'inlineScript'
+                inlineScript: |
+                  az deployment group create --resource-group ${{ parameters.resourceGroupName }} --template-file "$(Pipeline.Workspace)/arm-templates/webapp/template.json" --parameters "$(Pipeline.Workspace)/arm-templates/webapp/parameters.json"

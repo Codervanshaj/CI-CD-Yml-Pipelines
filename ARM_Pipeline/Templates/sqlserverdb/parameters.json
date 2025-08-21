@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "sqlServerName": { "value": "myvanshtestsqlsv" },
+    "location": { "value": "westus2" },
+    "administratorLogin": { "value": "sqladminuser" },
+    "administratorLoginPassword": { "value": "MyStrongPass123!" },
+    "databaseName": { "value": "mySampleDB" }
+  }
+}
