@@ -1,0 +1,66 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+
+stages:
+- stage: Plan
+  displayName: 'Terraform Plan'
+  jobs:
+  - job: TerraformPlan
+    displayName: 'Terraform Plan'
+
+
+      
+    steps:
+
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: 'latest'
+
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        backendServiceArm: 'mytestserviceConnection'
+        backendAzureRmStorageAccountName: 'tfstatemyvanshstr'
+        backendAzureRmContainerName: 'tfstatvanshcont'
+        backendAzureRmKey: 'terraform.tfstate'
+
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        environmentServiceNameAzureRM: 'mytestserviceConnection'
+        commandOptions: '-var "admin_password=$(admin_password)"'
+
+
+- stage: Deploy
+  displayName: 'Terraform Apply'
+  jobs:
+  - job: TerraformApply
+    displayName: 'Terraform Apply'
+    steps:
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: 'latest'
+    
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        backendServiceArm: 'mytestserviceConnection'
+        backendAzureRmStorageAccountName: 'tfstatemyvanshstr'
+        backendAzureRmContainerName: 'tfstatvanshcont'
+        backendAzureRmKey: 'terraform.tfstate'
+
+    - task: TerraformTask@5
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        environmentServiceNameAzureRM: 'mytestserviceConnection'
+        commandOptions: '-var "admin_password=$(admin_password)"'
