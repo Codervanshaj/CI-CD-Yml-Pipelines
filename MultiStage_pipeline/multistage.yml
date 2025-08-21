@@ -1,0 +1,76 @@
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+stages:
+   - stage: Buildstage
+     displayName: Application Build
+     jobs:
+       - job: Buildjob
+         displayName: Build Job
+         steps:
+            - task: NuGetToolInstaller@1
+
+            - task: NuGetCommand@2
+              inputs:
+                restoreSolution: '$(solution)'
+
+            - task: VSBuild@1
+              inputs:
+                solution: '$(solution)'
+                msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\Testapp.zip" /p:DeployIisAppPath="Default Web Site"'
+                platform: '$(buildPlatform)'
+                configuration: '$(buildConfiguration)'
+            - task: DotNetCoreCLI@2
+              inputs:
+                command: 'publish'
+                publishWebProjects: true
+            - task: PublishBuildArtifacts@1
+              inputs:
+                PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+                ArtifactName: 'drop'
+                publishLocation: 'Container'
+
+   - stage: DeployToDev    
+     displayName: Deplooy to Dev Env 
+     dependsOn: Buildstage
+     condition: succeeded()
+     jobs: 
+       - deployment: deployDev
+         displayName: Deploy to Dev   
+         pool:
+            vmImage: 'windows-latest'
+         environment: 
+           name: Build
+           resourceType: VirtualMachine 
+
+         strategy:
+           runOnce:
+            deploy:
+               steps:
+                 - download: current
+                   artifact:  drop
+                 
+                 - task: IISWebAppManagementOnMachineGroup@0
+                   inputs:
+              
+                     IISDeploymentType: 'IISWebsite'
+                     ActionIISWebsite: 'CreateOrUpdateWebsite'
+                     WebsiteName: 'TestApp'
+                     WebsitePhysicalPath: '%SystemDrive%\inetpub\wwwroot'
+                     WebsitePhysicalPathAuth: 'WebsiteUserPassThrough'
+                     AddBinding: true
+                     Bindings: |
+                        [
+                          "http/*:6500:"
+                        ]
+
+                 - task: IISWebAppDeploymentOnMachineGroup@0
+                   inputs:
+                     WebSiteName: 'TestApp'
+                     Package: '$(Pipeline.Workspace)/drop/Testapp.zip'    
